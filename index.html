@@ -1,0 +1,606 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Craftium 3D: Caminho dos Campeões</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Press Start 2P', monospace; background: #0f172a; color: #fff; }
+
+    /* OVERLAYS & MENUS */
+    .overlay-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle, rgba(15,23,42,0.95) 0%, rgba(3,7,18,0.98) 100%);
+      z-index: 100; padding: 20px; text-align: center;
+    }
+
+    .title-banner {
+      font-size: 1.8rem; color: #38bdf8;
+      text-shadow: 4px 4px #0369a1, -2px -2px #000;
+      margin-bottom: 20px; animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+    .menu-box {
+      background: rgba(30, 41, 59, 0.9); border: 4px solid #38bdf8;
+      padding: 25px; border-radius: 16px; width: 100%; max-width: 440px;
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
+    }
+
+    .input-group { margin-bottom: 18px; text-align: left; }
+    .input-group label { font-size: 0.65rem; color: #94a3b8; display: block; margin-bottom: 8px; }
+    .input-group input {
+      width: 100%; padding: 12px; font-family: 'Press Start 2P', monospace;
+      font-size: 0.75rem; background: #0f172a; border: 2px solid #38bdf8;
+      color: #fff; border-radius: 8px; outline: none; text-align: center;
+    }
+
+    .btn {
+      width: 100%; padding: 15px; font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem; color: #fff; background: #2563eb; border: none;
+      border-bottom: 5px solid #1d4ed8; border-radius: 8px; cursor: pointer;
+      margin-top: 10px; transition: all 0.1s;
+    }
+    .btn:active { transform: translateY(3px); border-bottom-width: 2px; }
+    .btn-success { background: #10b981; border-bottom-color: #047857; }
+
+    /* HUD DO MUNDO 3D */
+    #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 10; }
+    
+    .crosshair {
+      position: absolute; top: 50%; left: 50%; width: 16px; height: 16px;
+      transform: translate(-50%, -50%);
+    }
+    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.8); }
+    .crosshair::before { top: 7px; left: 0; width: 16px; height: 2px; }
+    .crosshair::after { top: 0; left: 7px; width: 2px; height: 16px; }
+
+    .top-bar {
+      position: absolute; top: 15px; left: 15px; right: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    
+    .player-card {
+      background: rgba(15, 23, 42, 0.85); padding: 10px 15px; border-radius: 10px;
+      border: 2px solid #38bdf8; font-size: 0.65rem;
+    }
+
+    .objective-card {
+      background: rgba(16, 185, 129, 0.9); padding: 10px 15px; border-radius: 10px;
+      border: 2px solid #fff; font-size: 0.6rem; animation: pulse 2s infinite;
+      color: #fff; text-shadow: 1px 1px #000;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+    /* INTERFACE DO QUIZ VIBRANTE */
+    #quiz-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle, #1e1b4b 0%, #090d16 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px; z-index: 999; pointer-events: auto;
+    }
+
+    .battle-box {
+      background: rgba(15, 23, 42, 0.95); border: 4px solid #a855f7;
+      border-radius: 24px; padding: 25px; width: 100%; max-width: 520px;
+      box-shadow: 0 0 35px rgba(168, 85, 247, 0.5); text-align: center;
+      position: relative; z-index: 1000;
+    }
+
+    .battle-stats {
+      display: flex; justify-content: space-between; margin-bottom: 15px;
+      background: rgba(30, 41, 59, 0.8); padding: 12px 18px; border-radius: 12px;
+      font-size: 0.7rem; border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .question-category {
+      font-size: 0.6rem; color: #a855f7; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;
+    }
+
+    .question-title {
+      font-size: 0.95rem; color: #f8fafc; margin: 10px 0 20px; line-height: 1.5;
+      font-family: 'Poppins', sans-serif; font-weight: 600;
+    }
+
+    .options-grid {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .option-btn {
+      padding: 16px; background: #1e293b; border: 2px solid #3b82f6;
+      border-radius: 12px; color: #fff; font-family: 'Poppins', sans-serif;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: auto; z-index: 1001;
+    }
+
+    .option-btn:hover { background: #3b82f6; transform: translateY(-2px); }
+
+    .explanation-box {
+      margin-top: 15px; font-size: 0.75rem; color: #cbd5e1; font-family: 'Poppins', sans-serif;
+      background: rgba(30, 41, 59, 0.6); padding: 10px; border-radius: 8px; display: none;
+    }
+
+    /* CONTROLES MOBILE */
+    #mobile-controls {
+      position: absolute; bottom: 30px; width: 100%; display: none;
+      justify-content: space-between; padding: 0 30px; pointer-events: none; z-index: 20;
+    }
+    .touch-btn {
+      width: 65px; height: 65px; background: rgba(255,255,255,0.25);
+      border: 2px solid #fff; border-radius: 50%; pointer-events: auto;
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA INICIAL -->
+  <div id="start-screen" class="overlay-screen">
+    <div class="title-banner">CRAFTIUM 3D</div>
+    <div class="menu-box">
+      <div class="input-group">
+        <label>NOME DO JOGADOR:</label>
+        <input type="text" id="player-name-input" value="Steve" maxlength="10">
+      </div>
+
+      <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 15px; line-height: 1.5;">
+        ⚽ <strong>ALAMEDA DOS CAMPEÕES:</strong><br>
+        Siga o caminho marcado com as bandeiras do <strong>Palmeiras 🟢</strong> e do <strong>Santos ⚪⚫</strong> entre as árvores até o Portal Místico!
+      </div>
+
+      <button class="btn btn-success" onclick="startGame()">ENTRAR NO CAMINHO</button>
+    </div>
+  </div>
+
+  <!-- HUD DO MUNDO 3D -->
+  <div id="hud">
+    <div class="crosshair"></div>
+    <div class="top-bar">
+      <div class="player-card">
+        👤 <span id="hud-player-name">Steve</span>
+      </div>
+      <div class="objective-card">
+        ⚽ Siga o Caminho das Bandeiras!
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DO QUIZ INFORMATIVO E VIBRANTE -->
+  <div id="quiz-screen">
+    <div class="battle-box">
+      <div class="question-category" id="question-cat">CONHECIMENTO GERAL & ESPORTES</div>
+      
+      <div class="battle-stats">
+        <span>Pontos: <strong id="quiz-score" style="color: #38bdf8;">0</strong></span>
+        <span>Vidas: <span id="quiz-lives">❤️❤️❤️</span></span>
+      </div>
+
+      <div class="question-title" id="question-text">Carregando pergunta...</div>
+
+      <div class="options-grid" id="options-container"></div>
+      
+      <div class="explanation-box" id="explanation-box"></div>
+    </div>
+  </div>
+
+  <!-- CONTROLES MÓVEIS -->
+  <div id="mobile-controls">
+    <div class="touch-btn" id="btn-forward">⬆️</div>
+    <div class="touch-btn" id="btn-jump">🚀</div>
+  </div>
+
+  <script>
+    // SINTETIZADOR DE SOM (Web Audio API)
+    const AudioFX = {
+      ctx: null,
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+      playPortal() {
+        this.init();
+        const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.type = 'sine'; osc.connect(g); g.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.5);
+        g.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+      },
+      playSuccess() {
+        this.init();
+        const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(523, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(659, this.ctx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+      },
+      playError() {
+        this.init();
+        const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+        osc.type = 'sawtooth'; osc.connect(g); g.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(80, this.ctx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+      }
+    };
+
+    // BANCO DE PERGUNTAS INFORMATIVAS E RICAS
+    const QUIZ_QUESTIONS = [
+      {
+        cat: "HISTÓRIA DO FUTEBOL",
+        q: "Qual lenda do futebol brasileiro encantou o mundo jogando pelo Santos FC e conquistou 3 Copas do Mundo?",
+        opts: ["Pelé", "Neymar Jr", "Garrincha", "Zico"],
+        ans: 0,
+        info: "Pelé marcou mais de 1.000 gols na carreira e consagrou a camisa 10 do Santos no mundo inteiro!"
+      },
+      {
+        cat: "TECNOLOGIA & VOXELS",
+        q: "O que é um 'Voxel', elemento que compõe todo o mundo 3D deste jogo?",
+        opts: ["Um pixel tridimensional em grade 3D", "Uma imagem 2D em alta resolução", "Um tipo de vetor de áudio", "Um código de programação"],
+        ans: 0,
+        info: "Voxels são cubos em uma grade 3D, combinando 'Volumetric' + 'Pixel'."
+      },
+      {
+        cat: "CLÁSSICOS PAULISTAS",
+        q: "Qual é o apelido carinhoso do tradicional estádio do Palmeiras inaugurado em 2014?",
+        opts: ["Allianz Parque", "Vila Belmiro", "Maracanã", "Morumbis"],
+        ans: 0,
+        info: "O Allianz Parque é a moderna arena do Verdão localizada no bairro da Pompeia em São Paulo."
+      },
+      {
+        cat: "GEOGRAFIA & CULTURA",
+        q: "A Vila Belmiro, lendário estádio do Santos Futebol Clube, está localizada em qual cidade brasileira?",
+        opts: ["Santos (SP)", "São Paulo (SP)", "Campinas (SP)", "Niterói (RJ)"],
+        ans: 0,
+        info: "O estádio Urbano Caldeira (Vila Belmiro) fica na cidade litorânea de Santos."
+      },
+      {
+        cat: "PROGRAMAÇÃO & WEB",
+        q: "Qual biblioteca JavaScript 3D foi utilizada para renderizar todo o cenário deste jogo direto no navegador?",
+        opts: ["Three.js", "React", "Python", "Bootstrap"],
+        ans: 0,
+        info: "Three.js facilita a criação de gráficos 3D acelerados por WebGL no navegador!"
+      }
+    ];
+
+    // ESTADO DO JOGO
+    let scene, camera, renderer;
+    let portalMesh = null;
+    let playerName = "Steve";
+    let inPortal = false;
+    let quizScore = 0;
+    let quizLives = 3;
+    let currentQuestionIdx = 0;
+
+    // CRIAR CANVAS DE TEXTURAS RÁPIDAS
+    function createTexture(colorHex, textOverlay = null) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = colorHex; ctx.fillRect(0, 0, 64, 64);
+
+      // Textura suave
+      for (let i = 0; i < 30; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
+      }
+
+      if (textOverlay) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(textOverlay, 32, 32);
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // BANDEIRAS DOS TIMES (CANVAS TEXTURE)
+    function createFlagTexture(team) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      if (team === 'palmeiras') {
+        ctx.fillStyle = '#006437'; ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#006437'; ctx.font = "bold 42px sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("P", 64, 64);
+      } else {
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 64, 128);
+        ctx.fillStyle = '#ffffff'; ctx.font = "bold 40px sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("SFC", 64, 64);
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // INICIAR O JOGO
+    function startGame() {
+      playerName = document.getElementById('player-name-input').value || "Steve";
+      document.getElementById('hud-player-name').innerText = playerName;
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('hud').style.display = 'block';
+
+      if ('ontouchstart' in window) {
+        document.getElementById('mobile-controls').style.display = 'flex';
+      }
+
+      initEngine();
+
+      document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock;
+      document.body.requestPointerLock();
+    }
+
+    function initEngine() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x38bdf8);
+      scene.fog = new THREE.FogExp2(0x38bdf8, 0.035);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 2, 8);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      document.body.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+      const light = new THREE.DirectionalLight(0xffffff, 0.7);
+      light.position.set(20, 40, 20);
+      scene.add(light);
+
+      buildWorld();
+      setupControls();
+      animate();
+    }
+
+    // CONSTRUIR O CAMINHO DE PEDRA, BANDEIRAS, ÁRVORES E PORTAL
+    function buildWorld() {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const grassMat = new THREE.MeshLambertMaterial({ map: createTexture('#4b8b3b') });
+      const pathMat = new THREE.MeshLambertMaterial({ map: createTexture('#64748b') });
+      const woodMat = new THREE.MeshLambertMaterial({ map: createTexture('#5c4033') });
+      const leavesMat = new THREE.MeshLambertMaterial({ map: createTexture('#166534') });
+      
+      const palmeirasMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('palmeiras') });
+      const santosMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('santos') });
+      const obsidianMat = new THREE.MeshLambertMaterial({ map: createTexture('#0f172a') });
+      const portalMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.85 });
+
+      // Terreno Principal de Grama
+      for (let x = -10; x <= 10; x++) {
+        for (let z = -14; z <= 10; z++) {
+          const grass = new THREE.Mesh(geo, grassMat);
+          grass.position.set(x, 0, z);
+          scene.add(grass);
+        }
+      }
+
+      // CAMINHO DE PEDRA DIRETO ATÉ O PORTAL (z: 8 até z: -10)
+      for (let z = 8; z >= -10; z--) {
+        for (let x = -1; x <= 1; x++) {
+          const pathBlock = new THREE.Mesh(geo, pathMat);
+          pathBlock.position.set(x, 0.05, z);
+          scene.add(pathBlock);
+        }
+
+        // Adicionar Árvores e Mastros com Bandeiras ao longo do caminho
+        if (z % 4 === 0 && z > -9) {
+          // Árvores nas laterais
+          createTree(-4, 1, z, woodMat, leavesMat);
+          createTree(4, 1, z, woodMat, leavesMat);
+
+          // Bandeira do Palmeiras (Esquerda)
+          createFlagPost(-2.5, 1, z, woodMat, palmeirasMat);
+          // Bandeira do Santos (Direita)
+          createFlagPost(2.5, 1, z, woodMat, santosMat);
+        }
+      }
+
+      // ESTRUTURA DO PORTAL ROXO (Posicionado no final do caminho x:0, z:-10)
+      const portalGroup = new THREE.Group();
+      for(let y=1; y<=4; y++) {
+        const left = new THREE.Mesh(geo, obsidianMat); left.position.set(-1.5, y, 0); portalGroup.add(left);
+        const right = new THREE.Mesh(geo, obsidianMat); right.position.set(1.5, y, 0); portalGroup.add(right);
+      }
+      for(let x=-1.5; x<=1.5; x++) {
+        const top = new THREE.Mesh(geo, obsidianMat); top.position.set(x, 5, 0); portalGroup.add(top);
+        const bottom = new THREE.Mesh(geo, obsidianMat); bottom.position.set(x, 1, 0); portalGroup.add(bottom);
+      }
+
+      portalMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), portalMat);
+      portalMesh.position.set(0, 3, 0);
+      portalGroup.add(portalMesh);
+
+      portalGroup.position.set(0, 0, -10);
+      scene.add(portalGroup);
+    }
+
+    function createTree(x, y, z, woodMat, leavesMat) {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      // Tronco
+      for(let i=0; i<3; i++) {
+        const trunk = new THREE.Mesh(geo, woodMat);
+        trunk.position.set(x, y+i, z);
+        scene.add(trunk);
+      }
+      // Folhas
+      for(let lx=-1; lx<=1; lx++) {
+        for(let lz=-1; lz<=1; lz++) {
+          const leaf = new THREE.Mesh(geo, leavesMat);
+          leaf.position.set(x+lx, y+3, z+lz);
+          scene.add(leaf);
+        }
+      }
+    }
+
+    function createFlagPost(x, y, z, woodMat, flagMat) {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      // Mastro
+      for(let i=0; i<3; i++) {
+        const pole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.2), woodMat);
+        pole.position.set(x, y+i, z);
+        scene.add(pole);
+      }
+      // Bandeira
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 0.1), flagMat);
+      flag.position.set(x, y+2.2, z);
+      scene.add(flag);
+    }
+
+    // CONTROLES DE MOVIMENTAÇÃO
+    let keys = {};
+    let touchMove = false;
+
+    function setupControls() {
+      window.addEventListener('keydown', e => keys[e.code] = true);
+      window.addEventListener('keyup', e => keys[e.code] = false);
+
+      document.addEventListener('mousemove', e => {
+        if (document.pointerLockElement === document.body) {
+          camera.rotation.y -= e.movementX * 0.002;
+          camera.rotation.x -= e.movementY * 0.002;
+          camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+        }
+      });
+
+      const btnFwd = document.getElementById('btn-forward');
+      btnFwd.addEventListener('touchstart', () => touchMove = true);
+      btnFwd.addEventListener('touchend', () => touchMove = false);
+
+      document.getElementById('btn-jump').addEventListener('click', () => {
+        if (camera.position.y <= 2.1) camera.position.y += 1.5;
+      });
+    }
+
+    // TRANSIÇÃO PARA O QUIZ
+    function enterBattlePortal() {
+      inPortal = true;
+      AudioFX.playPortal();
+      
+      if (document.exitPointerLock) document.exitPointerLock();
+
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('mobile-controls').style.display = 'none';
+      document.getElementById('quiz-screen').style.display = 'flex';
+
+      loadQuestion();
+    }
+
+    // LÓGICA DO QUIZ INFORMATIVO
+    function loadQuestion() {
+      document.getElementById('explanation-box').style.display = 'none';
+
+      if (currentQuestionIdx >= QUIZ_QUESTIONS.length) {
+        alert(`🏆 PARABÉNS, ${playerName}! VOCÊ VENCEU O QUIZ DOS CAMPEÕES!\nPontuação Final: ${quizScore}`);
+        location.reload();
+        return;
+      }
+
+      const qData = QUIZ_QUESTIONS[currentQuestionIdx];
+      document.getElementById('question-cat').innerText = qData.cat;
+      document.getElementById('question-text').innerText = qData.q;
+      
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      qData.opts.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `<span>${optText}</span> <span>➔</span>`;
+        
+        // CORREÇÃO DOS CLIQUES E TOQUES NO QUIZ
+        const handleChoice = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          answerQuestion(idx === qData.ans, qData.info, btn);
+        };
+
+        btn.addEventListener('click', handleChoice);
+        btn.addEventListener('touchend', handleChoice);
+
+        container.appendChild(btn);
+      });
+    }
+
+    function answerQuestion(isCorrect, infoText, selectedBtn) {
+      const expBox = document.getElementById('explanation-box');
+      expBox.innerText = infoText;
+      expBox.style.display = 'block';
+
+      if (isCorrect) {
+        AudioFX.playSuccess();
+        selectedBtn.style.background = '#10b981';
+        selectedBtn.style.borderColor = '#047857';
+        quizScore += 20;
+        document.getElementById('quiz-score').innerText = quizScore;
+        currentQuestionIdx++;
+        setTimeout(loadQuestion, 1800);
+      } else {
+        AudioFX.playError();
+        selectedBtn.style.background = '#ef4444';
+        selectedBtn.style.borderColor = '#b91c1c';
+        quizLives--;
+        document.getElementById('quiz-lives').innerText = '❤️'.repeat(Math.max(0, quizLives));
+
+        if (quizLives <= 0) {
+          setTimeout(() => {
+            alert(`💥 FIM DE JOGO! Suas vidas acabaram. Pontuação: ${quizScore}`);
+            location.reload();
+          }, 1000);
+        }
+      }
+    }
+
+    // LOOP DE ANIMAÇÃO 3D
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (!inPortal) {
+        const speed = 0.12;
+        if (keys['KeyW'] || touchMove) camera.translateZ(-speed);
+        if (keys['KeyS']) camera.translateZ(speed);
+        if (keys['KeyA']) camera.translateX(-speed);
+        if (keys['KeyD']) camera.translateX(speed);
+        if (keys['Space']) camera.position.y += 0.08;
+        
+        // Gravidade suave
+        if (camera.position.y > 2) camera.position.y -= 0.04;
+
+        // Animação de rotação do efeito do portal
+        if (portalMesh) portalMesh.rotation.y += 0.03;
+
+        // Checar entrada no Portal (x:0, z:-10)
+        const distToPortal = camera.position.distanceTo(new THREE.Vector3(0, 2, -10));
+        if (distToPortal < 1.8) {
+          enterBattlePortal();
+        }
+
+        renderer.render(scene, camera);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
