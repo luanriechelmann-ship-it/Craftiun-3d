@@ -153,7 +153,7 @@
 
       <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 15px; line-height: 1.5;">
         ⚽ <strong>ALAMEDA DOS CAMPEÕES:</strong><br>
-        Siga o caminho marcado com as bandeiras do <strong>Palmeiras 🟢</strong> e do <strong>Santos ⚪⚫</strong> entre as árvores até o Portal Místico!
+        Siga o caminho marcado com bandeiras de desafio entre as árvores até o Portal Místico!
       </div>
 
       <button class="btn btn-success" onclick="startGame()">ENTRAR NO CAMINHO</button>
@@ -306,25 +306,30 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    // BANDEIRAS DOS TIMES (CANVAS TEXTURE)
-    function createFlagTexture(team) {
+    // BANDEIRAS GENÉRICAS DE DESAFIO (SEM IDENTIFICAR CLUBES)
+    function createFlagTexture(theme) {
       const canvas = document.createElement('canvas');
       canvas.width = 128; canvas.height = 128;
       const ctx = canvas.getContext('2d');
 
-      if (team === 'palmeiras') {
-        ctx.fillStyle = '#006437'; ctx.fillRect(0, 0, 128, 128);
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#006437'; ctx.font = "bold 42px sans-serif";
+      if (theme === 'challenge') {
+        ctx.fillStyle = '#0f766e'; ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#ecfeff';
+        ctx.fillRect(0, 0, 128, 24);
+        ctx.fillRect(0, 52, 128, 24);
+        ctx.fillRect(0, 104, 128, 24);
+        ctx.fillStyle = '#0f172a'; ctx.font = "bold 48px sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("P", 64, 64);
+        ctx.fillText("A", 64, 64);
       } else {
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 128, 128);
-        ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 64, 128);
-        ctx.fillStyle = '#ffffff'; ctx.font = "bold 40px sans-serif";
+        ctx.fillStyle = '#1d4ed8'; ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 0, 128, 18);
+        ctx.fillRect(0, 55, 128, 18);
+        ctx.fillRect(0, 110, 128, 18);
+        ctx.fillStyle = '#0f172a'; ctx.font = "bold 46px sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("SFC", 64, 64);
+        ctx.fillText("B", 64, 64);
       }
 
       return new THREE.CanvasTexture(canvas);
@@ -378,8 +383,8 @@
       const woodMat = new THREE.MeshLambertMaterial({ map: createTexture('#5c4033') });
       const leavesMat = new THREE.MeshLambertMaterial({ map: createTexture('#166534') });
       
-      const palmeirasMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('palmeiras') });
-      const santosMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('santos') });
+      const flagLeftMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('challenge') });
+      const flagRightMat = new THREE.MeshLambertMaterial({ map: createFlagTexture('rival') });
       const obsidianMat = new THREE.MeshLambertMaterial({ map: createTexture('#0f172a') });
       const portalMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.85 });
 
@@ -406,10 +411,9 @@
           createTree(-4, 1, z, woodMat, leavesMat);
           createTree(4, 1, z, woodMat, leavesMat);
 
-          // Bandeira do Palmeiras (Esquerda)
-          createFlagPost(-2.5, 1, z, woodMat, palmeirasMat);
-          // Bandeira do Santos (Direita)
-          createFlagPost(2.5, 1, z, woodMat, santosMat);
+          // Bandeiras genéricas de desafio (Esquerda/Direita)
+          createFlagPost(-2.5, 1, z, woodMat, flagLeftMat);
+          createFlagPost(2.5, 1, z, woodMat, flagRightMat);
         }
       }
 
